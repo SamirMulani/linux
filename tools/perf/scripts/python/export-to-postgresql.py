@@ -223,15 +223,14 @@ import datetime
 #                   print "{0:>6}  {1:>10}  {2:>9}  {3:<30}  {4:>6}  {5:<30}".format(query.value(0), query.value(1), query.value(2), query.value(3), query.value(4), query.value(5))
 #                   call_path_id = query.value(6)
 
-PYSIDE_VERSION_1 = True
-if "pyside-version-1" not in sys.argv:
-    try:
-        from PySide2.QtSql import *
-        PYSIDE_VERSION_1 = False
-    except:
-        pass
-
-if PYSIDE_VERSION_1:
+# Import PySide based on Python Version
+if "pyside-version-1" or "--pyside-version-1" in sys.argv:
+    from PySide.QtSql import *
+elif sys.version_info >= (3,7):
+    from PySide6.QtSql import *
+elif sys.version_info >= (2,7):
+    from PySide2.QtSql import *
+else:
     from PySide.QtSql import *
 
 if sys.version_info < (3, 0):
