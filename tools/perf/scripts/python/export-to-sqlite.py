@@ -79,16 +79,15 @@ import datetime
 # difference is  the 'transaction' column of the 'samples' table which is
 # renamed 'transaction_' in sqlite because 'transaction' is a reserved word.
 
-PYSIDE_VERSION_1 = True
-if "pyside-version-1" not in sys.argv:
-    try:
-        from PySide2.QtSql import *
-        PYSIDE_VERSION_1 = False
-    except:
-        pass
-
-if PYSIDE_VERSION_1:
+# Import PySide based on Python Version
+if "pyside-version-1" in sys.argv or "--pyside-version-1" in sys.argv \
+or sys.version_info < (2,7):
     from PySide.QtSql import *
+else:
+    if sys.version_info >= (3,7):
+        from PySide6.QtSql import *
+    else:
+        from PySide2.QtSql import *
 
 sys.path.append(os.environ['PERF_EXEC_PATH'] +
                 '/scripts/python/Perf-Trace-Util/lib/Perf/Trace')
