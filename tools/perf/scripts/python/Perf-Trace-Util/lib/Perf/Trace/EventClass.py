@@ -1,4 +1,6 @@
-# EventClass.py
+# EventClass.py -  Python extension for perf script, used for
+#                   performance event analysis
+
 # SPDX-License-Identifier: GPL-2.0
 #
 # This is a library defining some events types classes, which could
@@ -13,65 +15,115 @@ from __future__ import print_function
 import struct
 
 # Event types, user could add more here
-EVTYPE_GENERIC  = 0
-EVTYPE_PEBS     = 1     # Basic PEBS event
-EVTYPE_PEBS_LL  = 2     # PEBS event with load latency info
-EVTYPE_IBS      = 3
+EVTYPE_GENERIC = 0
+EVTYPE_PEBS = 1     # Basic PEBS event
+EVTYPE_PEBS_LL = 2     # PEBS event with load latency info
+EVTYPE_IBS = 3
 
 #
 # Currently we don't have good way to tell the event type, but by
 # the size of raw buffer, raw PEBS event with load latency data's
 # size is 176 bytes, while the pure PEBS event's size is 144 bytes.
 #
+
+# Function to create an event instance based on raw buffer size
 def create_event(name, comm, dso, symbol, raw_buf):
-        if (len(raw_buf) == 144):
-                event = PebsEvent(name, comm, dso, symbol, raw_buf)
-        elif (len(raw_buf) == 176):
-                event = PebsNHM(name, comm, dso, symbol, raw_buf)
-        else:
-                event = PerfEvent(name, comm, dso, symbol, raw_buf)
+    """
+    Create an event instance based on raw buffer size.
 
-        return event
+    Args:
+        name (str): Event name.
+        comm (str): Command name.
+        dso (str): Dynamic shared object.
+        symbol (str): Symbol name.
+        raw_buf (bytes): Raw buffer containing event data.
 
-class PerfEvent(object):
-        event_num = 0
-        def __init__(self, name, comm, dso, symbol, raw_buf, ev_type=EVTYPE_GENERIC):
-                self.name       = name
-                self.comm       = comm
-                self.dso        = dso
-                self.symbol     = symbol
-                self.raw_buf    = raw_buf
-                self.ev_type    = ev_type
-                PerfEvent.event_num += 1
+    Returns:
+        PerfEvent: An instance of the appropriate event class.
+    """
+    if len(raw_buf) == 144:
+        event = PebsEvent(name, comm, dso, symbol, raw_buf)
+    elif len(raw_buf) == 176:
+        event = PebsNHM(name, comm, dso, symbol, raw_buf)
+    else:
+        event = PerfEvent(name, comm, dso, symbol, raw_buf)
 
-        def show(self):
-                print("PMU event: name=%12s, symbol=%24s, comm=%8s, dso=%12s" %
-                      (self.name, self.symbol, self.comm, self.dso))
+    return event
+
+class PerfEvent():
+    """
+    Base class for all perf event samples.
+    """
+    event_num = 0
+
+    def __init__(self, name, comm, dso, symbol, raw_buf, ev_type=EVTYPE_GENERIC):
+        """
+        Initialize PerfEvent instance.
+
+        Args:
+            name (str): Event name.
+            comm (str): Command name.
+            dso (str): Dynamic shared object.
+            symbol (str): Symbol name.
+            raw_buf (bytes): Raw buffer containing event data.
+            ev_type (int): Event type identifier.
+        """
+        self.name = name
+        self.comm = comm
+        self.dso = dso
+        self.symbol = symbol
+        self.raw_buf = raw_buf
+        self.ev_type = ev_type
+        PerfEvent.event_num += 1
+
+    def show(self):
+        """
+        Print event information.
+        """
+        print("PMU event: name=%12s, symbol=%24s, comm=%8s, dso=%12s" %
+              (self.name, self.symbol, self.comm, self.dso))
 
 #
 # Basic Intel PEBS (Precise Event-based Sampling) event, whose raw buffer
 # contains the context info when that event happened: the EFLAGS and
 # linear IP info, as well as all the registers.
 #
-class PebsEvent(PerfEvent):
-        pebs_num = 0
-        def __init__(self, name, comm, dso, symbol, raw_buf, ev_type=EVTYPE_PEBS):
-                tmp_buf=raw_buf[0:80]
-                flags, ip, ax, bx, cx, dx, si, di, bp, sp = struct.unpack('QQQQQQQQQQ', tmp_buf)
-                self.flags = flags
-                self.ip    = ip
-                self.ax    = ax
-                self.bx    = bx
-                self.cx    = cx
-                self.dx    = dx
-                self.si    = si
-                self.di    = di
-                self.bp    = bp
-                self.sp    = sp
 
-                PerfEvent.__init__(self, name, comm, dso, symbol, raw_buf, ev_type)
-                PebsEvent.pebs_num += 1
-                del tmp_buf
+class PebsEvent(PerfEvent):
+    """
+    Class for basic Intel PEBS events.
+    """
+    pebs_num = 0
+
+    def __init__(self, name, comm, dso, symbol, raw_buf, ev_type=EVTYPE_PEBS):
+        """
+        Initialize PebsEvent instance.
+
+        Args:
+            name (str): Event name.
+            comm (str): Command name.
+            dso (str): Dynamic shared object.
+            symbol (str): Symbol name.
+            raw_buf (bytes): Raw buffer containing event data.
+            ev_type (int): Event type identifier.
+        """
+        tmp_buf = raw_buf[0:80]
+        flags, ipa, reg_ax, reg_bx, reg_cx, reg_dx, reg_si, reg_di, reg_bp, reg_sp = struct.unpack(
+            'QQQQQQQQQQ', tmp_buf)
+        self.flags = flags
+        self.ipa = ipa
+        self.reg_ax = reg_ax
+        self.reg_bx = reg_bx
+        self.reg_cx = reg_cx
+        self.reg_dx = reg_dx
+        self.reg_si = reg_si
+        self.reg_di = reg_di
+        self.reg_bp = reg_bp
+        self.reg_sp = reg_sp
+
+        PerfEvent.__init__(name, comm, dso, symbol, raw_buf, ev_type)
+        PebsEvent.pebs_num += 1
+        del tmp_buf
 
 #
 # Intel Nehalem and Westmere support PEBS plus Load Latency info which lie
@@ -82,16 +134,32 @@ class PebsEvent(PerfEvent):
 #               in L1/L2/L3 or IO operations
 #       LAT:    the actual latency in cycles
 #
-class PebsNHM(PebsEvent):
-        pebs_nhm_num = 0
-        def __init__(self, name, comm, dso, symbol, raw_buf, ev_type=EVTYPE_PEBS_LL):
-                tmp_buf=raw_buf[144:176]
-                status, dla, dse, lat = struct.unpack('QQQQ', tmp_buf)
-                self.status = status
-                self.dla = dla
-                self.dse = dse
-                self.lat = lat
 
-                PebsEvent.__init__(self, name, comm, dso, symbol, raw_buf, ev_type)
-                PebsNHM.pebs_nhm_num += 1
-                del tmp_buf
+class PebsNHM(PebsEvent):
+    """
+    Class for Intel Nehalem and Westmere PEBS events with load latency info.
+    """
+    pebs_nhm_num = 0
+
+    def __init__(self, name, comm, dso, symbol, raw_buf, ev_type=EVTYPE_PEBS_LL):
+        """
+        Initialize PebsNHM instance.
+
+        Args:
+            name (str): Event name.
+            comm (str): Command name.
+            dso (str): Dynamic shared object.
+            symbol (str): Symbol name.
+            raw_buf (bytes): Raw buffer containing event data.
+            ev_type (int): Event type identifier.
+        """
+        tmp_buf = raw_buf[144:176]
+        status, dla, dse, lat = struct.unpack('QQQQ', tmp_buf)
+        self.status = status
+        self.dla = dla
+        self.dse = dse
+        self.lat = lat
+
+        PebsEvent.__init__(name, comm, dso, symbol, raw_buf, ev_type)
+        PebsNHM.pebs_nhm_num += 1
+        del tmp_buf
