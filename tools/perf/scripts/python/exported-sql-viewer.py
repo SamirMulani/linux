@@ -120,22 +120,25 @@ except ImportError:
     import pickle
     GLB_NSZ = 16
 
+# Import PySide based on Python Version
 PYSIDE_VERSION_1 = True
-if "--pyside-version-1" not in sys.argv:
-    try:
+if "pyside-version-1" in sys.argv or "--pyside-version-1" in sys.argv \
+or sys.version_info < (2,7):
+    from PySide.QtCore import *
+    from PySide.QtGui import *
+    from PySide.QtSql import *
+else:
+    PYSIDE_VERSION_1 = False
+    if sys.version_info >= (3,7):
+        from PySide6.QtCore import *
+        from PySide6.QtGui import *
+        from PySide6.QtSql import *
+        from PySide6.QtWidgets import *
+    else:
         from PySide2.QtCore import *
         from PySide2.QtGui import *
         from PySide2.QtSql import *
         from PySide2.QtWidgets import *
-        PYSIDE_VERSION_1 = False
-    except:
-        pass
-
-if PYSIDE_VERSION_1:
-    from PySide.QtCore import *
-    from PySide.QtGui import *
-    from PySide.QtSql import *
-
 
 # xrange is range in Python3
 try:
