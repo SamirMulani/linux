@@ -28,7 +28,7 @@ import subprocess
 import sys
 import urllib.request
 
-minimal_html = """<head>
+MINIMAL_HTML = """<head>
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/d3-flame-graph@4.1.3/dist/d3-flamegraph.css">
 </head>
 <body>
@@ -49,6 +49,8 @@ minimal_html = """<head>
 """
 
 # pylint: disable=too-few-public-methods
+
+
 class Node:
     def __init__(self, name, libtype):
         self.name = name
@@ -123,7 +125,8 @@ class FlameGraphCLI:
             return ""
 
         try:
-            output = subprocess.check_output(["perf", "report", "--header-only"])
+            output = subprocess.check_output(
+                ["perf", "report", "--header-only"])
             return output.decode("utf-8")
         except Exception as err:  # pylint: disable=broad-except
             print("Error reading report header: {}".format(err), file=sys.stderr)
@@ -163,10 +166,11 @@ and place it at:
 /usr/share/d3-flame-graph/d3-flamegraph-base.html""",
                                   file=sys.stderr)
                             quit()
-                        s = None
-                        while s != "y" and s != "n":
-                            s = input("Do you wish to download a template from cdn.jsdelivr.net? (this warning can be suppressed with --allow-download) [yn] ").lower()
-                        if s == "n":
+                        input_str = None
+                        while input_str != "y" and input_str != "n":
+                            input_str = input(
+                                "Do you wish to download a template from cdn.jsdelivr.net? (this warning can be suppressed with --allow-download) [yn] ").lower()
+                        if input_str == "n":
                             quit()
                     template = "https://cdn.jsdelivr.net/npm/d3-flame-graph@4.1.3/dist/templates/d3-flamegraph-base.html"
                     template_md5sum = "143e0d06ba69b8370b9848dcd6ae3f36"
@@ -179,23 +183,26 @@ and place it at:
             except Exception as err:
                 print(f"Error reading template {template}: {err}\n"
                       "a minimal flame graph will be generated", file=sys.stderr)
-                output_str = minimal_html
+                output_str = MINIMAL_HTML
                 template_md5sum = None
 
             if template_md5sum:
-                download_md5sum = hashlib.md5(output_str.encode("utf-8")).hexdigest()
+                download_md5sum = hashlib.md5(
+                    output_str.encode("utf-8")).hexdigest()
                 if download_md5sum != template_md5sum:
-                    s = None
-                    while s != "y" and s != "n":
-                        s = input(f"""Unexpected template md5sum.
+                    input_str = None
+                    while input_str != "y" and input_str != "n":
+                        input_str = input(f"""Unexpected template md5sum.
 {download_md5sum} != {template_md5sum}, for:
 {output_str}
 continue?[yn] """).lower()
-                    if s == "n":
+                    if input_str == "n":
                         quit()
 
-            output_str = output_str.replace("/** @options_json **/", options_json)
-            output_str = output_str.replace("/** @flamegraph_json **/", stacks_json)
+            output_str = output_str.replace(
+                "/** @options_json **/", options_json)
+            output_str = output_str.replace(
+                "/** @flamegraph_json **/", stacks_json)
 
             output_fn = self.args.output or "flamegraph.html"
         else:
@@ -211,7 +218,8 @@ continue?[yn] """).lower()
                 with io.open(output_fn, "w", encoding="utf-8") as out:
                     out.write(output_str)
             except IOError as err:
-                print("Error writing output file: {}".format(err), file=sys.stderr)
+                print("Error writing output file: {}".format(
+                    err), file=sys.stderr)
                 sys.exit(1)
 
 
