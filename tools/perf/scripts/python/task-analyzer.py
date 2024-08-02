@@ -16,12 +16,12 @@ import string
 import argparse
 import decimal
 
+from perf_trace_context import *
+from Core import *
 
 sys.path.append(
     os.environ["PERF_EXEC_PATH"] + "/scripts/python/Perf-Trace-Util/lib/Perf/Trace"
 )
-from perf_trace_context import *
-from Core import *
 
 # Definition of possible ASCII color codes
 _COLORS = {
@@ -72,7 +72,7 @@ else:
 
 def _check_color():
     global _COLORS
-    """user enforced no-color or if stdout is no tty we disable colors"""
+    # user enforced no-color or if stdout is no tty we disable colors
     if sys.stdout.isatty() and args.stdio_color != "never":
         return
     _COLORS = {
@@ -92,8 +92,7 @@ def _parse_args():
     parser.add_argument(
         "--time-limit",
         default=[],
-        help=
-            "print tasks only in time[s] window e.g"
+        help="print tasks only in time[s] window e.g"
         " --time-limit 123.111:789.222(print all between 123.111 and 789.222)"
         " --time-limit 123: (print all from 123)"
         " --time-limit :456 (print all until incl. 456)",
@@ -146,8 +145,8 @@ def _parse_args():
         "--rename-comms-by-tids",
         default="",
         help="rename task names by using tid (<tid>:<newname>,<tid>:<newname>)"
-            " This option is handy for inexpressive processnames like python interpreted"
-            " process. E.g --rename 1337:my-python-app",
+            " This option is handy for inexpressive processnames like python"
+            " interpreted process. E.g --rename 1337:my-python-app",
     )
     parser.add_argument(
         "--stdio-color",
@@ -169,7 +168,7 @@ def _parse_args():
             " --summary-extended are used.",
     )
     args = parser.parse_args()
-    args.tid_renames = dict()
+    args.tid_renames = {}
 
     _argument_filter_sanity_check()
     _argument_prepare_check()
@@ -187,14 +186,14 @@ def time_uniter(unit):
 
 def _init_db():
     global db
-    db = dict()
-    db["running"] = dict()
-    db["cpu"] = dict()
-    db["tid"] = dict()
+    db = {}
+    db["running"] = {}
+    db["cpu"] = {}
+    db["tid"] = {}
     db["global"] = []
     if args.summary or args.summary_extended or args.summary_only:
-        db["task_info"] = dict()
-        db["runtime_info"] = dict()
+        db["task_info"] = {}
+        db["runtime_info"] = {}
         # min values for summary depending on the header
         db["task_info"]["pid"] = len("PID")
         db["task_info"]["tid"] = len("TID")
@@ -207,7 +206,7 @@ def _init_db():
         db["runtime_info"]["mean"] = len("Mean")
         db["runtime_info"]["median"] = len("Median")
         if args.summary_extended:
-            db["inter_times"] = dict()
+            db["inter_times"] = {}
             db["inter_times"]["out_in"] = len("Out-In")
             db["inter_times"]["inter_at"] = len("At")
             db["inter_times"]["out_out"] = len("Out-Out")
@@ -221,14 +220,14 @@ def _median(numbers):
     index = n // 2
     if n % 2:
         return sorted(numbers)[index]
-    return sum(sorted(numbers)[index - 1 : index + 1]) / 2
+    return sum(sorted(numbers)[index - 1: index + 1]) / 2
 
 
 def _mean(numbers):
     return sum(numbers) / len(numbers)
 
 
-class Timespans(object):
+class Timespans:
     """
     The elapsed time between two occurrences of the same task is being tracked with the
     help of this class. There are 4 of those Timespans Out-Out, In-Out, Out-In and
@@ -285,9 +284,7 @@ class Timespans(object):
             self.max_out_in = self.out_in
             self.max_at = self._time_in
 
-
-
-class Summary(object):
+class Summary:
     """
     Primary instance for calculating the summary output. Processes the whole trace to
     find and memorize relevant data such as mean, max et cetera. This instance handles
@@ -302,7 +299,7 @@ class Summary(object):
         Used to calculated the alignment for the output of the summary.
         """
         def __init__(self, pid, tid, comm, runs, acc, mean,
-                    median, min, max, max_at):
+                    median, min_, max_, max_at):
             self.pid = pid
             self.tid = tid
             self.comm = comm
@@ -310,8 +307,8 @@ class Summary(object):
             self.acc = acc
             self.mean = mean
             self.median = median
-            self.min = min
-            self.max = max
+            self.min = min_
+            self.max = max_
             self.max_at = max_at
             if args.summary_extended:
                 self.out_in = None
@@ -338,7 +335,7 @@ class Summary(object):
                 sum(db["inter_times"].values()) - 4 * decimal_precision
                 )
             _header += ("Max Inter Task Times",)
-        fd_sum.write(fmt.format(*_header) +  "\n")
+        fd_sum.write(fmt.format(*_header) + "\n")
 
     def _column_titles(self):
         """
@@ -398,7 +395,6 @@ class Summary(object):
                         "Out-Out", "In-In", "In-Out")
 
         fd_sum.write(fmt.format(*column_titles) + "\n")
-
 
     def _task_stats(self):
         """calculates the stats of every task and constructs the printable summary"""
@@ -498,7 +494,6 @@ class Summary(object):
             fmt += "{}{{:{}.{}f}}".format(separator, len_in_out, time_precision)
         return fmt
 
-
     def _calc_alignments_summary(self, align_helper):
         # Length is being cut in 3 groups so that further addition is easier to handle.
         # The length of every argument from the alignment helper is being checked if it
@@ -514,7 +509,6 @@ class Summary(object):
                 if len(str(getattr(align_helper, key))) > db["inter_times"][key]:
                     db["inter_times"][key] = len(str(getattr(align_helper, key)))
 
-
     def print(self):
         self._task_stats()
         fmt = self._format_stats()
@@ -526,13 +520,11 @@ class Summary(object):
         for i in range(len(self._body)):
             fd_sum.write(fmt.format(*tuple(self._body[i])) + "\n")
 
-
-
-class Task(object):
+class Task:
     """ The class is used to handle the information of a given task."""
 
-    def __init__(self, id, tid, cpu, comm):
-        self.id = id
+    def __init__(self, id_, tid, cpu, comm):
+        self.id = id_
         self.tid = tid
         self.cpu = cpu
         self.comm = comm
@@ -632,8 +624,6 @@ def _print_header():
         header += ("Time Out-Out", "Time In-In", "Time In-Out")
     fd_task.write(fmt.format(*header) + "\n")
 
-
-
 def _print_task_finish(task):
     """calculating every entry of a row and printing it immediately"""
     c_row_set = ""
@@ -672,7 +662,6 @@ def _print_task_finish(task):
         in_in = timespan_gap_tid.in_in
         in_out = timespan_gap_tid.in_out
 
-
     if args.extended_times:
         line_out = fmt.format(c_row_set, task.time_in(), task.time_out(), task.cpu,
                         task.pid, c_tid_set, task.tid, c_tid_reset, c_row_set, task.comm,
@@ -684,7 +673,7 @@ def _print_task_finish(task):
                         task.runtime(time_unit), out_in, c_row_reset) + "\n"
     try:
         fd_task.write(line_out)
-    except(IOError):
+    except IOError:
         # don't mangle the output if user SIGINT this script
         sys.exit()
 
@@ -694,7 +683,7 @@ def _record_cleanup(_list):
     is not enabled
     """
     if not args.summary and len(_list) > 1:
-        _list = _list[len(_list) - 1 :]
+        _list = _list[len(_list) - 1:]
 
 
 def _record_by_tid(task):
@@ -742,7 +731,7 @@ def _handle_task_finish(tid, cpu, time, perf_sample_dict):
 
     # print only tasks which are not being filtered and no print of trace
     # for summary only, but record every task.
-    if not _limit_filtered(tid, pid, task.comm) and not args.summary_only:
+    if not _limit_filtered(tid, task.comm) and not args.summary_only:
         _print_task_finish(task)
     _record_by_tid(task)
     _record_by_cpu(task)
@@ -774,18 +763,16 @@ def _time_to_internal(time_ns):
     return decimal.Decimal(time_ns) / decimal.Decimal(1e9)
 
 
-def _limit_filtered(tid, pid, comm):
+def _limit_filtered(tid, comm):
     if args.filter_tasks:
-        if str(tid) in args.filter_tasks or comm in args.filter_tasks:
-            return True
-        else:
-            return False
+        return str(tid) in args.filter_tasks or comm in args.filter_tasks
     if args.limit_to_tasks:
-        if str(tid) in args.limit_to_tasks or comm in args.limit_to_tasks:
-            return False
-        else:
-            return True
+        return not (
+                str(tid) in args.limit_to_tasks or comm in args.limit_to_tasks
+                )
 
+    # by default, not filtering out the tid/comm
+    return False
 
 def _argument_filter_sanity_check():
     if args.limit_to_tasks and args.filter_tasks:
@@ -822,7 +809,7 @@ def _argument_prepare_check():
         if len(tid_name) != 2:
             continue
         args.tid_renames[int(tid_name[0])] = tid_name[1]
-    args.highlight_tasks_map = dict()
+    args.highlight_tasks_map = {}
     for highlight_tasks_tuple in args.highlight_tasks.split(","):
         tasks_color_map = highlight_tasks_tuple.split(":")
         # default highlight color to red if no color set by user
@@ -842,18 +829,19 @@ def _argument_prepare_check():
     elif args.ms:
         time_unit = "ms"
 
-
     fd_task = sys.stdout
     if args.csv:
         args.stdio_color = "never"
-        fd_task = open(args.csv, "w")
-        print("generating csv at",args.csv,)
+        # pylint: disable=consider-using-with
+        fd_task = open(args.csv, "w", encoding="utf-8")
+        print("generating csv at", args.csv)
 
     fd_sum = sys.stdout
     if args.csv_summary:
         args.stdio_color = "never"
-        fd_sum = open(args.csv_summary, "w")
-        print("generating csv summary at",args.csv_summary)
+        # pylint: disable=consider-using-with
+        fd_sum = open(args.csv_summary, "w", encoding="utf-8")
+        print("generating csv summary at", args.csv_summary)
         if not args.csv:
             args.summary_only = True
 
@@ -867,31 +855,38 @@ def _is_within_timelimit(time):
         return True
     lower_time_limit = args.time_limit[0]
     upper_time_limit = args.time_limit[1]
+    if lower_time_limit:
+        lower_time_limit = decimal.Decimal(lower_time_limit)
+    if upper_time_limit:
+        upper_time_limit = decimal.Decimal(upper_time_limit)
+
     # check for upper limit
     if upper_time_limit == "":
-        if time >= decimal.Decimal(lower_time_limit):
+        if time >= lower_time_limit:
             return True
     # check for lower limit
     if lower_time_limit == "":
-        if time <= decimal.Decimal(upper_time_limit):
+        if time <= upper_time_limit:
             return True
         # quit if time exceeds upper limit. Good for big datasets
         else:
-            quit()
+            sys.exit()
     if lower_time_limit != "" and upper_time_limit != "":
-        if (time >= decimal.Decimal(lower_time_limit) and
-            time <= decimal.Decimal(upper_time_limit)):
+        if lower_time_limit <= time <= upper_time_limit:
             return True
         # quit if time exceeds upper limit. Good for big datasets
-        elif time > decimal.Decimal(upper_time_limit):
-            quit()
+        elif time > upper_time_limit:
+            sys.exit()
+
+    # time < lower_time_limit
+    return False
 
 def _prepare_fmt_precision():
     decimal_precision = 6
     time_precision = 3
     if args.ns:
-     decimal_precision = 9
-     time_precision = 0
+        decimal_precision = 9
+        time_precision = 0
     return decimal_precision, time_precision
 
 def _prepare_fmt_sep():
@@ -902,6 +897,7 @@ def _prepare_fmt_sep():
         fix_csv_align = 0
     return separator, fix_csv_align
 
+# pylint: disable=unused-argument
 def trace_unhandled(event_name, context, event_fields_dict, perf_sample_dict):
     pass
 
@@ -917,6 +913,7 @@ def trace_end():
     if args.summary or args.summary_extended or args.summary_only:
         Summary().print()
 
+# pylint: disable=unused-argument
 def sched__sched_switch(event_name, context, common_cpu, common_secs, common_nsecs,
                         common_pid, common_comm, common_callchain, prev_comm,
                         prev_pid, prev_prio, prev_state, next_comm, next_pid,
