@@ -2,57 +2,68 @@
 
 from __future__ import print_function
 
-data    = {}
-times   = []
-threads = []
-cpus    = []
+DATA = {}
+TIMES = []
+THREADS = []
+CPUS = []
+
 
 def get_key(time, event, cpu, thread):
     return "%d-%s-%d-%d" % (time, event, cpu, thread)
 
+
 def store_key(time, cpu, thread):
-    if (time not in times):
-        times.append(time)
+    if time not in TIMES:
+        TIMES.append(time)
 
-    if (cpu not in cpus):
-        cpus.append(cpu)
+    if cpu not in CPUS:
+        CPUS.append(cpu)
 
-    if (thread not in threads):
-        threads.append(thread)
+    if thread not in THREADS:
+        THREADS.append(thread)
+
 
 def store(time, event, cpu, thread, val, ena, run):
-    #print("event %s cpu %d, thread %d, time %d, val %d, ena %d, run %d" %
+    # print("event %s cpu %d, thread %d, time %d, val %d, ena %d, run %d" %
     #      (event, cpu, thread, time, val, ena, run))
 
     store_key(time, cpu, thread)
     key = get_key(time, event, cpu, thread)
-    data[key] = [ val, ena, run]
+    DATA[key] = [val, ena, run]
+
 
 def get(time, event, cpu, thread):
     key = get_key(time, event, cpu, thread)
-    return data[key][0]
+    return DATA[key][0]
+
 
 def stat__cycles_k(cpu, thread, time, val, ena, run):
-    store(time, "cycles", cpu, thread, val, ena, run);
+    store(time, "cycles", cpu, thread, val, ena, run)
+
 
 def stat__instructions_k(cpu, thread, time, val, ena, run):
-    store(time, "instructions", cpu, thread, val, ena, run);
+    store(time, "instructions", cpu, thread, val, ena, run)
+
 
 def stat__cycles_u(cpu, thread, time, val, ena, run):
-    store(time, "cycles", cpu, thread, val, ena, run);
+    store(time, "cycles", cpu, thread, val, ena, run)
+
 
 def stat__instructions_u(cpu, thread, time, val, ena, run):
-    store(time, "instructions", cpu, thread, val, ena, run);
+    store(time, "instructions", cpu, thread, val, ena, run)
+
 
 def stat__cycles(cpu, thread, time, val, ena, run):
-    store(time, "cycles", cpu, thread, val, ena, run);
+    store(time, "cycles", cpu, thread, val, ena, run)
+
 
 def stat__instructions(cpu, thread, time, val, ena, run):
-    store(time, "instructions", cpu, thread, val, ena, run);
+    store(time, "instructions", cpu, thread, val, ena, run)
+
 
 def stat__interval(time):
-    for cpu in cpus:
-        for thread in threads:
+    for cpu in CPUS:
+        for thread in THREADS:
             cyc = get(time, "cycles", cpu, thread)
             ins = get(time, "instructions", cpu, thread)
             cpi = 0
@@ -60,7 +71,9 @@ def stat__interval(time):
             if ins != 0:
                 cpi = cyc/float(ins)
 
-            print("%15f: cpu %d, thread %d -> cpi %f (%d/%d)" % (time/(float(1000000000)), cpu, thread, cpi, cyc, ins))
+            print("%15f: cpu %d, thread %d -> cpi %f (%d/%d)" %
+                  (time/(float(1000000000)), cpu, thread, cpi, cyc, ins))
+
 
 def trace_end():
     pass
